@@ -1,0 +1,34 @@
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+
+const MIME = {
+  '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
+  '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.woff2': 'font/woff2',
+  '.ico': 'image/x-icon', '.txt': 'text/plain', '.mjs': 'application/javascript',
+};
+
+http.createServer((req, res) => {
+  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  if (urlPath === '/') urlPath = '/index.html';
+  const filePath = path.join(__dirname, urlPath);
+  const ext = path.extname(filePath).toLowerCase();
+  if (!fs.existsSync(filePath)) { res.writeHead(404); return res.end('Not found'); }
+  const stat = fs.statSync(filePath);
+  if (stat.isDirectory()) {
+    const indexPath = path.join(filePath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return fs.createReadStream(indexPath).pipe(res);
+    }
+    res.writeHead(403); return res.end('Forbidden');
+  }
+  res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+  fs.createReadStream(filePath).pipe(res);
+}).listen(PORT, () => console.log(`Serving http://localhost:${PORT}`));
